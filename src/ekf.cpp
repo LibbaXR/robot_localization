@@ -35,9 +35,8 @@
 #include <cmath>
 #include <vector>
 
-#include "angles/angles.h"
 #include "Eigen/Dense"
-#include "rclcpp/time.hpp"
+#include "robot_localization/mytime.hpp"
 #include "robot_localization/filter_base.hpp"
 #include "robot_localization/filter_common.hpp"
 #include "robot_localization/filter_utilities.hpp"
@@ -183,7 +182,7 @@ void Ekf::correct(const Measurement & measurement)
       update_indices[i] == StateMemberPitch ||
       update_indices[i] == StateMemberYaw)
     {
-      innovation_subset(i) = ::angles::normalize_angle(innovation_subset(i));
+      innovation_subset(i) = filter_utilities::normalize_angle(innovation_subset(i));
     }
   }
 
@@ -220,8 +219,8 @@ void Ekf::correct(const Measurement & measurement)
 }
 
 void Ekf::predict(
-  const rclcpp::Time & reference_time,
-  const rclcpp::Duration & delta)
+  const MyTime & reference_time,
+  const Duration & delta)
 {
   const double delta_sec = filter_utilities::toSec(delta);
 

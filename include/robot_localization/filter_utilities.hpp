@@ -38,8 +38,8 @@
 #include <vector>
 
 #include "Eigen/Dense"
-#include "rclcpp/time.hpp"
-#include "std_msgs/msg/header.hpp"
+#include "mytime.hpp"
+#include "robot_localization/filter_common.hpp"
 
 #define FB_DEBUG(msg) \
   if (getDebug()) { \
@@ -82,9 +82,19 @@ inline void appendPrefix(const std::string & tf_prefix, std::string & frame_id)
   }
 }
 
-inline double nanosecToSec(const rcl_time_point_value_t nanoseconds)
+// inline double nanosecToSec(const rcl_time_point_value_t nanoseconds)
+// {
+//   return static_cast<double>(nanoseconds) * 1e-9;
+// }
+
+inline int nanosecs(const Duration& duration)
 {
-  return static_cast<double>(nanoseconds) * 1e-9;
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
+}
+
+inline int nanosecs(const MyTime& time)
+{
+  return nanosecs(time.time_since_epoch());
 }
 
 inline int secToNanosec(const double seconds)
@@ -92,19 +102,37 @@ inline int secToNanosec(const double seconds)
   return static_cast<int>(seconds * 1e9);
 }
 
-inline double toSec(const rclcpp::Duration & duration)
+inline double toSec(const Duration & duration)
 {
-  return nanosecToSec(duration.nanoseconds());
+  std::cout << "toSec(du)1: " << std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() * 1e-9 << std::endl;
+  std::cout << "toSec(du)2: " << std::chrono::duration<double>(duration).count() << std::endl;
+  return std::chrono::duration<double>(duration).count();
+  // return nanosecToSec(duration.nanoseconds());
 }
 
-inline double toSec(const rclcpp::Time & time)
+inline double toSec(const MyTime & time)
 {
-  return nanosecToSec(time.nanoseconds());
+  std::cout << "toSec(time)1: " << std::chrono::duration_cast<std::chrono::nanoseconds>(time.time_since_epoch()).count() * 1e-9 << std::endl;
+  std::cout << "toSec(time)2: " << std::chrono::duration<double>(std::chrono::duration_cast<std::chrono::seconds>(time.time_since_epoch())).count() << std::endl;
+  return std::chrono::duration<double>(std::chrono::duration_cast<std::chrono::seconds>(time.time_since_epoch())).count();
+  // return nanosecToSec(time.nanoseconds());
 }
 
-inline double toSec(const std_msgs::msg::Header::_stamp_type & stamp)
+inline double normalize_angle_positive(const double& angle)
 {
-  return static_cast<double>(stamp.sec) + nanosecToSec(stamp.nanosec);
+    // Normalizes the angle to be 0 to 2*pi
+    // It takes and returns radians.
+    return fmod(fmod(angle, 2.0*PI) + 2.0*PI, 2.0*PI);
+}
+
+inline double normalize_angle(const double& angle)
+{
+    // Normalizes the angle to be -pi to +pi
+    // It takes and returns radians.
+    double a = normalize_angle_positive(angle);
+    if (a > PI)
+        a -= 2.0 * PI;
+    return a;
 }
 
 }  // namespace filter_utilities

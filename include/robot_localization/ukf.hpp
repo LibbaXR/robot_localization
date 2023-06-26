@@ -35,7 +35,7 @@
 #include <vector>
 
 #include "Eigen/Dense"
-#include "rclcpp/time.hpp"
+#include "robot_localization/mytime.hpp"
 #include "robot_localization/filter_base.hpp"
 #include "robot_localization/measurement.hpp"
 
@@ -92,8 +92,8 @@ public:
    * @param[in] delta - The time step over which to predict.
    */
   void predict(
-    const rclcpp::Time & reference_time,
-    const rclcpp::Duration & delta) override;
+    const MyTime & reference_time,
+    const Duration & delta) override;
 
 protected:
   /**
@@ -106,7 +106,7 @@ protected:
    * @param[in,out] sigma_point - The sigma point (state vector) to project
    * @param[in] delta - The time step over which to project
    */
-  void projectSigmaPoint(Eigen::VectorXd & sigma_point, const rclcpp::Duration & delta);
+  void projectSigmaPoint(Eigen::VectorXd & sigma_point, const Duration & delta);
 
   /**
    * @brief  The UKF sigma points

@@ -181,10 +181,10 @@ void RobotLocalizationEstimator::extrapolate(
   double delta = requested_time - boundary_state.time_stamp;
 
   // Use the filter to predict
-  rclcpp::Time time_stamp = rclcpp::Time(
-    boundary_state.time_stamp *
-    1000000000);
-  rclcpp::Duration delta_duration = rclcpp::Duration::from_seconds(delta);
+  MyTime time_stamp = MyTime(std::chrono::nanoseconds(static_cast<int>(boundary_state.time_stamp * 1e9)));
+    // boundary_state.time_stamp *
+    // 1000000000);
+  Duration delta_duration = std::chrono::nanoseconds(static_cast<int>(delta * 1e9));
   filter_->predict(time_stamp, delta_duration);
 
   state_at_req_time.time_stamp = requested_time;

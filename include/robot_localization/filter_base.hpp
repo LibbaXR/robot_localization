@@ -37,7 +37,7 @@
 #include <vector>
 
 #include "Eigen/Dense"
-#include "rclcpp/time.hpp"
+#include "mytime.hpp"
 #include "robot_localization/measurement.hpp"
 
 namespace robot_localization
@@ -89,7 +89,7 @@ public:
    *
    * @return The time the control vector was issued
    */
-  const rclcpp::Time & getControlTime();
+  const MyTime & getControlTime();
 
   /**
    * @brief Gets the value of the debug_ variable.
@@ -117,7 +117,7 @@ public:
    *
    * @return The time at which we last received a measurement
    */
-  const rclcpp::Time & getLastMeasurementTime();
+  const MyTime & getLastMeasurementTime();
 
   /**
    * @brief Gets the filter's predicted state, i.e., the state estimate before
@@ -139,7 +139,7 @@ public:
    *
    * @return The sensor timeout value
    */
-  const rclcpp::Duration & getSensorTimeout();
+  const Duration & getSensorTimeout();
 
   /**
    * @brief Gets the filter state
@@ -158,8 +158,8 @@ public:
    * @param[in] delta - The time step over which to predict.
    */
   virtual void predict(
-    const rclcpp::Time & reference_time,
-    const rclcpp::Duration & delta) = 0;
+    const MyTime & reference_time,
+    const Duration & delta) = 0;
 
   /**
    * @brief Does some final preprocessing, carries out the predict/update cycle
@@ -175,7 +175,7 @@ public:
    */
   void setControl(
     const Eigen::VectorXd & control,
-    const rclcpp::Time & control_time);
+    const MyTime & control_time);
 
   /**
    * @brief Sets the control update vector and acceleration limits
@@ -193,7 +193,7 @@ public:
    */
   void setControlParams(
     const std::vector<bool> & update_vector,
-    const rclcpp::Duration & control_timeout,
+    const Duration & control_timeout,
     const std::vector<double> & acceleration_limits,
     const std::vector<double> & acceleration_gains,
     const std::vector<double> & deceleration_limits,
@@ -232,7 +232,7 @@ public:
    * @brief Sets the filter's last measurement time.
    * @param[in] last_measurement_time - The last measurement time of the filter
    */
-  void setLastMeasurementTime(const rclcpp::Time & last_measurement_time);
+  void setLastMeasurementTime(const MyTime & last_measurement_time);
 
   /**
    * @brief Sets the process noise covariance for the filter.
@@ -251,7 +251,7 @@ public:
    * @param[in] sensor_timeout - The time, in seconds, for a sensor to be
    * considered having timed out
    */
-  void setSensorTimeout(const rclcpp::Duration & sensor_timeout);
+  void setSensorTimeout(const Duration & sensor_timeout);
 
   /**
    * @brief Manually sets the filter's state
@@ -266,7 +266,7 @@ public:
    *
    * @param[in, out] delta - The time delta to validate
    */
-  void validateDelta(rclcpp::Duration & delta);
+  void validateDelta(Duration & delta);
 
 protected:
   /**
@@ -318,8 +318,8 @@ protected:
    * prediction step)
    */
   void prepareControl(
-    const rclcpp::Time & reference_time,
-    const rclcpp::Duration &);
+    const MyTime & reference_time,
+    const Duration &);
 
   /**
    * @brief Whether or not we've received any measurements
@@ -340,7 +340,7 @@ protected:
   /**
    * @brief Timeout value, in seconds, after which a control is considered stale
    */
-  rclcpp::Duration control_timeout_;
+  Duration control_timeout_;
 
   /**
    * @brief Tracks the time the filter was last updated using a measurement.
@@ -349,12 +349,12 @@ protected:
    * sensorTimeout_. We also use it to compute the time delta values for our
    * prediction step.
    */
-  rclcpp::Time last_measurement_time_;
+  MyTime last_measurement_time_;
 
   /**
    * @brief The time of reception of the most recent control term
    */
-  rclcpp::Time latest_control_time_;
+  MyTime latest_control_time_;
 
   /**
    * @brief The updates to the filter - both predict and correct - are driven by
@@ -362,7 +362,7 @@ protected:
    * filter to continue estimating. When this gap occurs, as specified by this
    * timeout, we will continue to call predict() at the filter's frequency.
    */
-  rclcpp::Duration sensor_timeout_;
+  Duration sensor_timeout_;
 
   /**
    * @brief Used for outputting debug messages

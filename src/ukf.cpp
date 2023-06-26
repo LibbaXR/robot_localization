@@ -33,10 +33,8 @@
 
 #include <vector>
 
-#include "angles/angles.h"
 #include "Eigen/Cholesky"
 #include "Eigen/Dense"
-#include "rclcpp/time.hpp"
 #include "robot_localization/filter_common.hpp"
 #include "robot_localization/filter_utilities.hpp"
 #include "robot_localization/measurement.hpp"
@@ -247,8 +245,8 @@ void Ukf::correct(const Measurement & measurement)
         update_indices[i] == StateMemberPitch ||
         update_indices[i] == StateMemberYaw)
       {
-        sigma_diff(i) = angles::normalize_angle(sigma_diff(i));
-        sigma_state_diff(i) = angles::normalize_angle(sigma_state_diff(i));
+        sigma_diff(i) = filter_utilities::normalize_angle(sigma_diff(i));
+        sigma_state_diff(i) = filter_utilities::normalize_angle(sigma_state_diff(i));
       }
     }
 
@@ -274,7 +272,7 @@ void Ukf::correct(const Measurement & measurement)
       update_indices[i] == StateMemberPitch ||
       update_indices[i] == StateMemberYaw)
     {
-      innovation_subset(i) = ::angles::normalize_angle(innovation_subset(i));
+      innovation_subset(i) = filter_utilities::normalize_angle(innovation_subset(i));
     }
   }
 
@@ -308,12 +306,12 @@ void Ukf::correct(const Measurement & measurement)
 }
 
 void Ukf::predict(
-  const rclcpp::Time & reference_time,
-  const rclcpp::Duration & delta)
+  const MyTime & reference_time,
+  const Duration & delta)
 {
   FB_DEBUG(
     "---------------------- Ukf::predict ----------------------\n" <<
-      "delta is " << delta.seconds() << "\nstate is " << state_ << "\n");
+      "delta is " << filter_utilities::toSec(delta) << "\nstate is " << state_ << "\n");
 
   prepareControl(reference_time, delta);
 
@@ -353,9 +351,9 @@ void Ukf::predict(
   for (size_t sigma_ind = 0; sigma_ind < sigma_points_.size(); ++sigma_ind) {
     sigma_diff = (sigma_points_[sigma_ind] - state_);
 
-    sigma_diff(StateMemberRoll) = angles::normalize_angle(sigma_diff(StateMemberRoll));
-    sigma_diff(StateMemberPitch) = angles::normalize_angle(sigma_diff(StateMemberPitch));
-    sigma_diff(StateMemberYaw) = angles::normalize_angle(sigma_diff(StateMemberYaw));
+    sigma_diff(StateMemberRoll) = filter_utilities::normalize_angle(sigma_diff(StateMemberRoll));
+    sigma_diff(StateMemberPitch) = filter_utilities::normalize_angle(sigma_diff(StateMemberPitch));
+    sigma_diff(StateMemberYaw) = filter_utilities::normalize_angle(sigma_diff(StateMemberYaw));
 
     estimate_error_covariance_.noalias() += covar_weights_[sigma_ind] *
       (sigma_diff * sigma_diff.transpose());
@@ -370,7 +368,7 @@ void Ukf::predict(
     process_noise_covariance = &dynamic_process_noise_covariance_;
   }
 
-  estimate_error_covariance_.noalias() += delta.seconds() * (*process_noise_covariance);
+  estimate_error_covariance_.noalias() += filter_utilities::toSec(delta) * (*process_noise_covariance);
 
   // Keep the angles bounded
   wrapStateAngles();
@@ -404,9 +402,9 @@ void Ukf::generateSigmaPoints()
   }
 }
 
-void Ukf::projectSigmaPoint(Eigen::VectorXd & sigma_point, const rclcpp::Duration & delta)
+void Ukf::projectSigmaPoint(Eigen::VectorXd & sigma_point, const Duration & delta)
 {
-  auto delta_sec = delta.seconds();
+  auto delta_sec = filter_utilities::toSec(delta);
 
   double roll = sigma_point(StateMemberRoll);
   double pitch = sigma_point(StateMemberPitch);

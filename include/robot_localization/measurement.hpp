@@ -40,7 +40,7 @@
 #include <vector>
 
 #include "Eigen/Dense"
-#include "rclcpp/time.hpp"
+#include "mytime.hpp"
 #include "robot_localization/measurement.hpp"
 
 namespace robot_localization
@@ -56,20 +56,20 @@ namespace robot_localization
 struct Measurement
 {
   Measurement()
-  : time_(0), mahalanobis_thresh_(std::numeric_limits<double>::max()),
-    latest_control_time_(0), topic_name_(""), latest_control_()
+  : time_(), mahalanobis_thresh_(std::numeric_limits<double>::max()),
+    latest_control_time_(), topic_name_(""), latest_control_()
   {
   }
 
   // The real-valued time, in seconds, since some epoch (presumably the start of
   // execution, but any will do)
-  rclcpp::Time time_;
+  MyTime time_;
 
   // The Mahalanobis distance threshold in number of sigmas
   double mahalanobis_thresh_;
 
   // The time stamp of the most recent control term (needed for lagged data)
-  rclcpp::Time latest_control_time_;
+  MyTime latest_control_time_;
 
   // The topic name for this measurement. Needed for capturing previous state
   // values for new measurements.

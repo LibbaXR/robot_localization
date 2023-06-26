@@ -35,10 +35,10 @@
 #include <algorithm>
 #include <ostream>
 #include <vector>
+#include <iomanip>
 
-#include "angles/angles.h"
 #include "Eigen/Dense"
-#include "rclcpp/time.hpp"
+#include "robot_localization/mytime.hpp"
 #include "robot_localization/filter_common.hpp"
 #include "robot_localization/filter_utilities.hpp"
 #include "robot_localization/measurement.hpp"
@@ -47,9 +47,9 @@ namespace robot_localization
 {
 FilterBase::FilterBase()
 : initialized_(false), use_control_(false),
-  use_dynamic_process_noise_covariance_(false), control_timeout_(0, 0u),
-  last_measurement_time_(0, 0, RCL_ROS_TIME), latest_control_time_(0, 0, RCL_ROS_TIME),
-  sensor_timeout_(0, 0u), debug_stream_(nullptr),
+  use_dynamic_process_noise_covariance_(false), control_timeout_(0),
+  last_measurement_time_(), latest_control_time_(),
+  sensor_timeout_(0), debug_stream_(nullptr),
   acceleration_gains_(TWIST_SIZE, 0.0),
   acceleration_limits_(TWIST_SIZE, 0.0),
   deceleration_gains_(TWIST_SIZE, 0.0),
@@ -100,10 +100,11 @@ void FilterBase::reset()
   covariance_epsilon_ *= 0.001;
 
   // Assume 30Hz from sensor data (configurable)
-  sensor_timeout_ = rclcpp::Duration::from_seconds(0.033333333);
+  // sensor_timeout_ = rclcpp::Duration::from_seconds(0.033333333);
+  sensor_timeout_ = std::chrono::nanoseconds(33333333);
 
   // Initialize our last update and measurement times
-  last_measurement_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+  last_measurement_time_ = MyTime();
 
   // These can be overridden via the launch parameters,
   // but we need default values.
@@ -156,7 +157,7 @@ void FilterBase::computeDynamicProcessNoiseCovariance(
 
 const Eigen::VectorXd & FilterBase::getControl() {return latest_control_;}
 
-const rclcpp::Time & FilterBase::getControlTime()
+const MyTime & FilterBase::getControlTime()
 {
   return latest_control_time_;
 }
@@ -170,7 +171,7 @@ const Eigen::MatrixXd & FilterBase::getEstimateErrorCovariance()
 
 bool FilterBase::getInitializedStatus() {return initialized_;}
 
-const rclcpp::Time & FilterBase::getLastMeasurementTime()
+const MyTime & FilterBase::getLastMeasurementTime()
 {
   return last_measurement_time_;
 }
@@ -185,7 +186,7 @@ const Eigen::MatrixXd & FilterBase::getProcessNoiseCovariance()
   return process_noise_covariance_;
 }
 
-const rclcpp::Duration & FilterBase::getSensorTimeout()
+const Duration & FilterBase::getSensorTimeout()
 {
   return sensor_timeout_;
 }
@@ -198,7 +199,7 @@ void FilterBase::processMeasurement(const Measurement & measurement)
     "------ FilterBase::processMeasurement (" << measurement.topic_name_ <<
       ") ------\n");
 
-  rclcpp::Duration delta(0, 0u);
+  Duration delta(0);
 
   // If we've had a previous reading, then go through the predict/update
   // cycle. Otherwise, set our state and covariance to whatever we get
@@ -210,13 +211,13 @@ void FilterBase::processMeasurement(const Measurement & measurement)
     FB_DEBUG(
       "Filter is already initialized. Carrying out predict/correct loop...\n"
       "Measurement time is " <<
-        std::setprecision(20) << measurement.time_.nanoseconds() <<
-        ", last measurement time is " << last_measurement_time_.nanoseconds() <<
-        ", delta is " << delta.nanoseconds() << "\n");
+        std::setprecision(20) << filter_utilities::nanosecs(measurement.time_) <<
+        ", last measurement time is " << filter_utilities::nanosecs(last_measurement_time_) <<
+        ", delta is " << filter_utilities::nanosecs(delta) << "\n");
 
     // Only want to carry out a prediction if it's
     // forward in time. Otherwise, just correct.
-    if (delta > rclcpp::Duration(0, 0u)) {
+    if (delta > Duration(0)) {
       validateDelta(delta);
       predict(measurement.time_, delta);
 
@@ -248,7 +249,7 @@ void FilterBase::processMeasurement(const Measurement & measurement)
     initialized_ = true;
   }
 
-  if (delta >= rclcpp::Duration(0, 0u)) {
+  if (delta >= Duration(0)) {
     // Update the last measurement and update time.
     // The measurement time is based on the time stamp of the
     // measurement, whereas the update time is based on this
@@ -266,7 +267,7 @@ void FilterBase::processMeasurement(const Measurement & measurement)
 
 void FilterBase::setControl(
   const Eigen::VectorXd & control,
-  const rclcpp::Time & control_time)
+  const MyTime & control_time)
 {
   latest_control_ = control;
   latest_control_time_ = control_time;
@@ -274,7 +275,7 @@ void FilterBase::setControl(
 
 void FilterBase::setControlParams(
   const std::vector<bool> & update_vector,
-  const rclcpp::Duration & control_timeout,
+  const Duration & control_timeout,
   const std::vector<double> & acceleration_limits,
   const std::vector<double> & acceleration_gains,
   const std::vector<double> & deceleration_limits,
@@ -316,7 +317,7 @@ void FilterBase::setEstimateErrorCovariance(
 }
 
 void FilterBase::setLastMeasurementTime(
-  const rclcpp::Time & last_measurement_time)
+  const MyTime & last_measurement_time)
 {
   last_measurement_time_ = last_measurement_time;
 }
@@ -328,14 +329,14 @@ void FilterBase::setProcessNoiseCovariance(
   dynamic_process_noise_covariance_ = process_noise_covariance_;
 }
 
-void FilterBase::setSensorTimeout(const rclcpp::Duration & sensor_timeout)
+void FilterBase::setSensorTimeout(const Duration & sensor_timeout)
 {
   sensor_timeout_ = sensor_timeout;
 }
 
 void FilterBase::setState(const Eigen::VectorXd & state) {state_ = state;}
 
-void FilterBase::validateDelta(rclcpp::Duration & /*delta*/)
+void FilterBase::validateDelta(Duration & /*delta*/)
 {
   // TODO(someone): Need to verify this condition B'Coz
   // rclcpp::Duration::from_seconds(100000.0) value is 0.00010000000000000000479
@@ -351,8 +352,8 @@ void FilterBase::validateDelta(rclcpp::Duration & /*delta*/)
 }
 
 void FilterBase::prepareControl(
-  const rclcpp::Time & reference_time,
-  const rclcpp::Duration &)
+  const MyTime & reference_time,
+  const Duration &)
 {
   control_acceleration_.setZero();
 
@@ -363,9 +364,9 @@ void FilterBase::prepareControl(
     if (timed_out) {
       FB_DEBUG(
         "Control timed out. Reference time was " <<
-          reference_time.nanoseconds() << ", latest control time was " <<
-          latest_control_time_.nanoseconds() << ", control timeout was " <<
-          control_timeout_.nanoseconds() << "\n");
+          filter_utilities::nanosecs(reference_time) << ", latest control time was " <<
+          filter_utilities::nanosecs(latest_control_time_) << ", control timeout was " <<
+          filter_utilities::nanosecs(control_timeout_) << "\n");
     }
 
     for (size_t controlInd = 0; controlInd < TWIST_SIZE; ++controlInd) {
@@ -421,9 +422,9 @@ inline double FilterBase::computeControlAcceleration(
 
 void FilterBase::wrapStateAngles()
 {
-  state_(StateMemberRoll) = angles::normalize_angle(state_(StateMemberRoll));
-  state_(StateMemberPitch) = angles::normalize_angle(state_(StateMemberPitch));
-  state_(StateMemberYaw) = angles::normalize_angle(state_(StateMemberYaw));
+  state_(StateMemberRoll) = filter_utilities::normalize_angle(state_(StateMemberRoll));
+  state_(StateMemberPitch) = filter_utilities::normalize_angle(state_(StateMemberPitch));
+  state_(StateMemberYaw) = filter_utilities::normalize_angle(state_(StateMemberYaw));
 }
 
 bool FilterBase::checkMahalanobisThreshold(

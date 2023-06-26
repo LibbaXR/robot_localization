@@ -33,7 +33,7 @@
 #ifndef ROBOT_LOCALIZATION__EKF_HPP_
 #define ROBOT_LOCALIZATION__EKF_HPP_
 
-#include "rclcpp/time.hpp"
+#include "mytime.hpp"
 #include "robot_localization/filter_base.hpp"
 #include "robot_localization/measurement.hpp"
 
@@ -77,8 +77,8 @@ public:
    * @param[in] delta - The time step over which to predict.
    */
   void predict(
-    const rclcpp::Time & reference_time,
-    const rclcpp::Duration & delta) override;
+    const MyTime & reference_time,
+    const Duration & delta) override;
 };
 
 }  // namespace robot_localization
