@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.5)
 project(robot_localization)
 
+# Add an option to enable/disable building the test
+option(BUILD_TEST "Build the test" OFF)
+
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)
 ENDIF()
@@ -38,3 +41,14 @@ target_link_libraries(
   ${library_name}
   ${EIGEN3_LIBRARIES}
 )
+
+if(BUILD_TEST)
+  add_executable(filter_record
+    filter_record/filter_record.cpp
+  )
+  target_link_libraries(
+    filter_record
+    ${library_name}
+  )
+  
+endif()

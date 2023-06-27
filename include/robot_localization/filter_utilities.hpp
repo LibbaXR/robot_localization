@@ -104,17 +104,13 @@ inline int secToNanosec(const double seconds)
 
 inline double toSec(const Duration & duration)
 {
-  std::cout << "toSec(du)1: " << std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() * 1e-9 << std::endl;
-  std::cout << "toSec(du)2: " << std::chrono::duration<double>(duration).count() << std::endl;
-  return std::chrono::duration<double>(duration).count();
+  return duration.count();
   // return nanosecToSec(duration.nanoseconds());
 }
 
 inline double toSec(const MyTime & time)
 {
-  std::cout << "toSec(time)1: " << std::chrono::duration_cast<std::chrono::nanoseconds>(time.time_since_epoch()).count() * 1e-9 << std::endl;
-  std::cout << "toSec(time)2: " << std::chrono::duration<double>(std::chrono::duration_cast<std::chrono::seconds>(time.time_since_epoch())).count() << std::endl;
-  return std::chrono::duration<double>(std::chrono::duration_cast<std::chrono::seconds>(time.time_since_epoch())).count();
+  return std::chrono::duration<double>(time.time_since_epoch()).count();
   // return nanosecToSec(time.nanoseconds());
 }
 
