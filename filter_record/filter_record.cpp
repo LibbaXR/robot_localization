@@ -9,7 +9,7 @@
 
 using namespace robot_localization;
 
-Measurement readLine(std::string line)
+Measurement readLine(std::string line, std::string& frame_id)
 {
     Measurement meas;
     meas.update_vector_ = std::vector<bool>(STATE_SIZE, false);
@@ -28,10 +28,13 @@ Measurement readLine(std::string line)
 
     std::stringstream ss(line);
     std::string token;
-    
+
+    std::getline(ss, frame_id, ',');
     if (std::getline(ss, token, ','))
     {
         meas.time_ = MyTime(std::chrono::nanoseconds(long(std::stod(token) * 1e9)));
+        // meas.time_ = MyTime(std::chrono::nanoseconds(long(std::stod(token))));
+        std::cout << token << ": " << filter_utilities::toSec(meas.time_) << std::endl;
     }
     if (std::getline(ss, token, ','))
         measurement(StateMemberX) = std::stod(token);
@@ -59,26 +62,31 @@ Measurement readLine(std::string line)
     return meas;
 }
 
-std::vector<Measurement> readFile(const std::string& filename)
+std::vector<std::pair<std::string, Measurement>> readFile(const std::string& filename)
 {
-    std::vector<Measurement> measurements;
+    std::vector<std::pair<std::string, Measurement> > measurements;
     std::ifstream fin(filename);
     std::string line;
     while (std::getline(fin, line))
     {
-        Measurement meas(readLine(line));
-        measurements.push_back(meas);
+        std::string frame_id;
+        Measurement meas(readLine(line, frame_id));
+        measurements.push_back(std::make_pair(frame_id, meas));
     }
     return measurements;
 }
 
-std::vector<Measurement> processData(const std::vector<Measurement>& measurements)
+std::vector<std::pair<std::string, Measurement>> processData(const std::vector<std::pair<std::string, Measurement>>& measurements)
 {
-    std::vector<Measurement> filtered_data;
+    std::vector<std::pair<std::string, Measurement>> filtered_data;
     robot_localization::Ekf filter_;
-    for (auto measurement : measurements)
+    std::ofstream fout("filter_debug.txt");
+    filter_.setDebug(true, &fout);
+
+    for (auto id_measurement : measurements)
     {
         // This will call predict and, if necessary, correct
+        Measurement measurement(id_measurement.second);
         filter_.processMeasurement(measurement);
         if (filter_.getInitializedStatus()) {
             Measurement meas;
@@ -88,20 +96,22 @@ std::vector<Measurement> processData(const std::vector<Measurement>& measurement
             meas.time_ = filter_.getLastMeasurementTime();
             meas.measurement_ = state;
             meas.covariance_ = estimate_error_covariance;
-            filtered_data.push_back(meas);
+            filtered_data.push_back(std::pair<std::string, Measurement>(id_measurement.first, meas));
         }
     }
 
     return filtered_data;
 }
 
-void writeFile(std::string filename, std::vector<Measurement> measurements)
+void writeFile(std::string filename, std::vector<std::pair<std::string, Measurement>> measurements)
 {
     std::ofstream fout(filename);
-    fout << std::fixed << std::setprecision(8);
-    for (auto& meas : measurements)
+    fout << std::fixed << std::setprecision(18);
+    for (auto& id_meas : measurements)
     {
-        fout << filter_utilities::toSec(meas.time_) << ", "
+        Measurement meas(id_meas.second);
+        fout << id_meas.first << ", "
+        << filter_utilities::toSec(meas.time_) << ", "
         << meas.measurement_(StateMemberX) << ", "
         << meas.measurement_(StateMemberY) << ", "
         << meas.measurement_(StateMemberZ) << ", "
@@ -126,9 +136,9 @@ int main(int argc, char *argv[])
     std::string in_filename(argv[1]);
     std::string out_filename(argv[2]);
 
-    std::vector<Measurement> measurements(readFile(in_filename));
+    std::vector<std::pair<std::string, Measurement>> measurements(readFile(in_filename));
     std::cout << "measurements.size(): " << measurements.size() << std::endl;
-    std::vector<Measurement> fixed_measurements(processData(measurements));
+    std::vector<std::pair<std::string, Measurement>> fixed_measurements(processData(measurements));
     writeFile(out_filename, fixed_measurements);
 
 }
